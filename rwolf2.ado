@@ -10,6 +10,17 @@ version highlights:
 0.0.1:[03/07/2021]: 
 */
 
+/*
+TO DO: - Implement one-sided
+       - Check about clustering within clustered bootsample (new option)
+       - Error checking with indepvar quantities
+       - Generate output with Holm
+       - varlabels for graphs
+       - error checking for bootstrap (replicates that don't work)
+       - Documentation
+       - beta tests
+*/
+
 cap program drop rwolf2
 program rwolf2, eclass
 vers 11.0
@@ -20,7 +31,7 @@ vers 11.0
 local stop 0
 local i = 0
 while !`stop' {
-    gettoken eqn 0 : 0,  parse(" ,[") match(paren)    
+    gettoken eqn 0 : 0,  parse(" ,[") match(paren)
     if `"`paren'"'=="(" {
         local ++i
         local eqn`i' `eqn'
@@ -98,7 +109,6 @@ foreach equation of numlist 1(1)`numeqns' {
     `eqn`equation''
     local xvar`equation'
     foreach var of varlist ``equation'' {
-        dis "`var'"
         local xvar`equation' `xvar`equation'' `var'
 
         local ++j
@@ -111,10 +121,8 @@ foreach equation of numlist 1(1)`numeqns' {
         test _b[`var'] = `beta0`j''
         local pv`j' = string(r(p), "%6.4f")
         local pv`j's= r(p)
-        dis `pv`j's'
 
         local cand `cand' `j'
-        *file write `nullvals' "b`j'_`var'; se`j'_`var';"
         file write `nullvals' "b`j'; se`j';"
     }
     macro shift
@@ -170,8 +178,6 @@ foreach num of numlist 1(1)`j' {
     qui gen     t`num'=(b`num'-`beta`num'')/se`num'
     qui replace b`num'=abs((b`num'-`beta`num'')/se`num')
 }
-dis ""
-dis "`cand'"
 
 *-------------------------------------------------------------------------------
 *--- (6) Create stepdown value in descending order based on t-stats
@@ -181,7 +187,6 @@ local pval = 0
 local rank
 local Holm = `j'
 local prmsm1
-
 
 **local cand_`var' `cand_`var'' `j'
 *******tokenize `varlist'
@@ -193,13 +198,12 @@ while length("`cand'")!=0 {
     if length(`"`onesided'"')==0|`"`onesided'"'=="negative" {
         foreach var of local cand {
             if `t`var''>`maxt' {
-                dis "D"
                 local maxt = `t`var''
                 local maxv `var'
                 if length(`"`onesided'"')==0  local ovar  b`var'
                 if `"`onesided'"'=="negative" local ovar  t`var'
             }
-            dis "Maximum t among remaining candidates is `maxt' (variable `maxv')"
+            *dis "Maximum t among remaining candidates is `maxt' (variable `maxv')"
             if length(`"`onesided'"')==0  {
                 local donor_tvals `donor_tvals' b`var'
             }
@@ -213,9 +217,6 @@ while length("`cand'")!=0 {
         if length(`"`plusone'"')!=0      local pval = (`cnum')/(`reps')
         else if length(`"`plusone'"')==0 local pval = (`cnum'+1)/(`reps'+1)
     
-    
-        ***24/02/2020: CHANGED BELOW LINE
-        *qui count if `ovar'>=`maxt' & `maxt'!=.
         qui count if `ovar'>=`maxt' & `ovar'!=.
         local cnum = r(N)
         if length(`"`plusone'"')!=0      local pvalBS = `cnum'/`reps'
@@ -253,7 +254,6 @@ while length("`cand'")!=0 {
     local maxv = 0
     local --Holm    
 }
-
 
 
 *-------------------------------------------------------------------------------
@@ -332,14 +332,13 @@ foreach equation of numlist 1(1)`numeqns' {
         foreach var of varlist `xvar`equation'' {
             local ++j
             display as text %`diswidth's abbrev("`var'",19) " {c |}     "   /*
-            */  as result %6.4f `pv`j's' "             "   /*
-            */  as result %6.4f `pbs`j's' "              "   /*
+            */  as result %6.4f `pv`j's' "             "                    /*
+            */  as result %6.4f `pbs`j's' "              "                  /*
             */  as result %6.4f `prm`j's'
             ereturn scalar rw_`var'=`prm`j's'
             matrix pvalues[`j',1]=`pv`j's'
             matrix pvalues[`j',2]=`pbs`j's'
             matrix pvalues[`j',3]=`prm`j's'
-            
         }
     }    
     dis "{hline 78}"
