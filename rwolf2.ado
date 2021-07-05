@@ -11,14 +11,8 @@ version highlights:
 */
 
 /*
-TO DO: - Implement one-sided
-       - Check about clustering within clustered bootsample (new option)
-       - Error checking with indepvar quantities
-       - Generate output with Holm
-       - varlabels for graphs
-       - error checking for bootstrap (replicates that don't work)
-       - Documentation
-       - beta tests
+TO DO: - Documentation
+       - More beta tests
 */
 
 cap program drop rwolf2
@@ -31,7 +25,7 @@ vers 11.0
 local stop 0
 local i = 0
 while !`stop' {
-    gettoken eqn 0 : 0,  parse(" ,[") match(paren)
+    gettoken eqn 0 : 0,  parse(" ,[") match(paren)    
     if `"`paren'"'=="(" {
         local ++i
         local eqn`i' `eqn'
@@ -57,18 +51,27 @@ syntax , indepvars(string)
   onesided(name)
   varlabels
   nodots
-  holm
   nulls(numlist)
   strata(varlist)
   CLuster(varlist)
+  idcluster(string)
+  usevalid
 ];
 #delimit cr
 
 *-------------------------------------------------------------------------------
-*--- (2) Unpacking baseline options
+*--- (2) Unpacking baseline options and error check
 *-------------------------------------------------------------------------------
 if length(`"`verbose'"')==0 local q qui
 cap set seed `seed'
+
+if length(`"`onesided'"')!=0 {
+    if `"`onesided'"'!="positive"&`"`onesided'"'!="negative" {
+        local W1 "When specifying onesided(), only onesided(positive)"
+        dis as error "`W1' or onesided(negative) are permissible"
+        exit 200
+    }
+}
 
 if length(`"`nulls'"')!=0 {
     local j = 0
@@ -83,50 +86,106 @@ tempname nullvals
 tempfile nullfile
 file open `nullvals' using "`nullfile'", write all
 
+local nsets=0
+tokenize `"`indepvars'"', parse(",")
+while length("`1'")!=0 {
+    macro shift
+    local ++nsets
+}
+if `numeqns'*2-1!=`nsets' {
+    local NEff = (`nsets'+1)/2
+    dis as error "`numeqns' equations are specified, and `NEff' set(s) of indepdent variables are specified."
+    dis as error "Ensure that indepvars includes a list of variables of interest for each equation."
+    error 200
+}
+*dis `nsets'
+*dis (`nsets'+1)/2
+*dis `numeqns'
 
-local diswidth = 15
-foreach equation of numlist 1(1)`numeqns' {
-    tokenize `eqn`equation''
-    ds `2'
-    local y`equation' `r(varlist)'
-    
-    local y`equation'length = length("`y`equation''")
-    local diswidth = max(`diswidth',`y`equation'length')
+local bopts
+if length(`"`strata'"')!=0  local bopts `bopts' strata(`strata')
+if length(`"`cluster'"')!=0 local bopts `bopts' cluster(`cluster')
+if length(`"`idcluster'"')!=0 {
+    if length(`"`cluster'"')==0 {
+        dis as error "The idcluster option requires that cluster is also specified"
+        exit 200
+    }
+    local bopts `bopts' idcluster(`idcluster')
+    foreach equation of numlist 1(1)`numeqns' {
+        local RE1 = "cluster\(.*\)"
+        local RE2 = "vce\( *[cluster].*\)"
+        local beqn`equation' = regexr("`eqn`equation''" ,"`RE1'","cluster(`idcluster')")
+        local beqn`equation' = regexr("`beqn`equation''","`RE2'","vce(cluster `idcluster')")
+        *dis "`beqn`equation''"
+    }
 }
 
 *-------------------------------------------------------------------------------
 *--- (3) Parsing of independent variables and estimating models
 *-------------------------------------------------------------------------------
-dis `"`indepvars'"'
 tokenize `"`indepvars'"', parse(",")
 
 local inft = 0
 local j    = 0
+local diswidth = 15
 
+local allvars
 foreach equation of numlist 1(1)`numeqns' {
     `q' dis "Equation `equation' is `eqn`equation''"
     `q' dis "Variables to correct are ``equation''"
-    `eqn`equation''
+    `q' `eqn`equation''
+
+    local y`equation' `e(depvar)'    
+    local y`equation'length = length("`y`equation''")
+    local diswidth = max(`diswidth',`y`equation'length')
     local xvar`equation'
     foreach var of varlist ``equation'' {
         local xvar`equation' `xvar`equation'' `var'
-
+        local allvars `allvars' "(y`equation'-`var')"
+        
         local ++j
         if length(`"`nulls'"')==0 local beta0`j' = 0
 
-        local t`j' = abs((_b[`var']-`beta0`j'')/_se[`var'])
-        local inft = min(`inft',`t`j'')
-
+        if length(`"`onesided'"')==0 {
+            local t`j' = abs((_b[`var']-`beta0`j'')/_se[`var'])
+        }
+        else {
+            local t`j' = (_b[`var']-`beta0`j'')/_se[`var']
+            local inft = min(`inft',`t`j'')
+        }
         local beta`j' = _b[`var']
-        test _b[`var'] = `beta0`j''
+        qui test _b[`var'] = `beta0`j''
         local pv`j' = string(r(p), "%6.4f")
         local pv`j's= r(p)
+        local label`j' `: var label `var' '
 
+        
+        if `"`onesided'"'=="positive" {
+            qui test `var'=`beta0`j''
+            local sgn = sign(_b[`var'])
+            if length(`"`r(F)'"')!=0 {
+                local pv`j'  = string(1-ttail(r(df_r),`sgn'*sqrt(r(F))), "%6.4f")
+                local pv`j's = (1-ttail(r(df_r),`sgn'*sqrt(r(F))))
+            }
+            else {
+                local pv`j's=normal(`sgn'*sqrt(r(chi2)))
+            }
+        }
+        if `"`onesided'"'=="negative" {
+            qui test `var'=`beta0`j''
+            local sgn = sign(_b[`var'])
+            if length(`"`r(F)'"')!=0 {
+                local pv`j'  = string(ttail(r(df_r),`sgn'*sqrt(r(F))), "%6.4f")
+                local pv`j's = (ttail(r(df_r),`sgn'*sqrt(r(F))))
+            }
+            else {
+                local pv`j's= 1-normal(`sgn'*sqrt(r(chi2)))
+            }
+        }
         local cand `cand' `j'
         file write `nullvals' "b`j'; se`j';"
     }
     macro shift
-
 }
 
 
@@ -143,14 +202,15 @@ forvalues i=1/`reps' {
     local bmess2 "in bootstrap `i'.  Taking next bootstrap sample..."
     local j=0
     preserve
-    bsample 
+    bsample, `bopts'
     if length(`"`dots'"')==0 {
         display in smcl "." _continue
         if mod(`i',50)==0 dis "     `i'"
     }
-
+    
     foreach equation of numlist 1(1)`numeqns' {
-        qui `eqn`equation''
+        if length(`"`idcluster'"')!=0 qui `beqn`equation''
+        else qui `eqn`equation''
 
         local k=1
         foreach var of varlist `xvar`equation'' {
@@ -162,7 +222,8 @@ forvalues i=1/`reps' {
     }
     restore
 }
-    
+
+
 preserve
 file close `nullvals'
 qui insheet using `nullfile', delim(";") names clear case
@@ -174,9 +235,20 @@ if length(`"`holm'"')!=0 matrix pvalues = J(`j',4,.)
 *-------------------------------------------------------------------------------
 *--- (5) Create null t-distribution
 *-------------------------------------------------------------------------------
+local P=0
+**TEST
+*replace b1=. in 88
 foreach num of numlist 1(1)`j' {    
     qui gen     t`num'=(b`num'-`beta`num'')/se`num'
     qui replace b`num'=abs((b`num'-`beta`num'')/se`num')
+
+    
+    qui count if t`num'!=.
+    if r(N)!=`reps' local ++P
+}
+if `P'!=0 {
+    dis as error "Not all bootstrap replicates have produced defined t-statistics for each variable"
+    dis as error "It is suggested that the usevalid option should be specified to discard invalid bootstrap replicates"
 }
 
 *-------------------------------------------------------------------------------
@@ -188,8 +260,8 @@ local rank
 local Holm = `j'
 local prmsm1
 
-**local cand_`var' `cand_`var'' `j'
-*******tokenize `varlist'
+tempvar empiricalDist
+tokenize `allvars'
 local ii=0
 while length("`cand'")!=0 {
     local ++ii
@@ -211,16 +283,24 @@ while length("`cand'")!=0 {
                 local donor_tvals `donor_tvals' t`var'
             }
         }
-        qui egen empiricalDist = rowmax(`donor_tvals')    
-        qui count if empiricalDist>=`maxt'  & empiricalDist != .
+        qui egen `empiricalDist' = rowmax(`donor_tvals')    
+        qui count if `empiricalDist'>=`maxt'  & `empiricalDist' != .
         local cnum = r(N)
-        if length(`"`plusone'"')!=0      local pval = (`cnum')/(`reps')
-        else if length(`"`plusone'"')==0 local pval = (`cnum'+1)/(`reps'+1)
-    
+        if length(`"`usevalid'"')!=0 {
+            qui count if `ovar'!=.
+            local Nrep = r(N)
+        }
+        else local Nrep = `reps'
+
+        dis "Num of Reps is `Nrep'"
+        if length(`"`plusone'"')!=0      local pval = (`cnum')/(`Nrep')
+        else if length(`"`plusone'"')==0 local pval = (`cnum'+1)/(`Nrep'+1)
+        
         qui count if `ovar'>=`maxt' & `ovar'!=.
         local cnum = r(N)
-        if length(`"`plusone'"')!=0      local pvalBS = `cnum'/`reps'
-        else if length(`"`plusone'"')==0 local pvalBS = (`cnum'+1)/(`reps'+1)
+
+        if length(`"`plusone'"')!=0      local pvalBS = `cnum'/`Nrep'
+        else if length(`"`plusone'"')==0 local pvalBS = (`cnum'+1)/(`Nrep'+1)
     
         local pbs`maxv's= `pvalBS'
         local prm`maxv's= `pval'
@@ -232,14 +312,62 @@ while length("`cand'")!=0 {
     
         local prmsm1 = `prm`maxv's'
         if length(`"`graph'"')!=0 {
-            gen tDist`ii'=empiricalDist
+            gen tDist`ii' = `empiricalDist'
+            *dis "``maxv''"
             local tt`ii' = `t`maxv''
             local ll`ii' "`label`maxv''"
             local yy`ii' ``maxv''
             local pp`ii' = string(`prm`maxv's',"%6.4f")
         }         
     }
-    drop empiricalDist 
+    else {
+        local mint = .
+        foreach var of local cand {
+            if `t`var''<`mint' {
+                local mint = `t`var''
+                local minv `var'
+                local ovar t`var'
+            }
+            *dis "Minimum t among remaining candidates is `mint' (variable `minv')"
+            local donor_tvals `donor_tvals' t`var'
+        }
+        qui egen `empiricalDist' = rowmin(`donor_tvals')
+        qui count if `empiricalDist' <= `mint' & `empiricalDist' != .
+        local cnum = r(N)
+
+        if length(`"`usevalid'"')!=0 {
+            qui count if `ovar'!=.
+            local Nrep = r(N)
+        }
+        else local Nrep = `reps'
+
+        dis "Num of Reps is `Nrep'"
+
+        if length(`"`plusone'"')!=0  local pval = (`cnum')/(`Nrep')
+        else  local pval = (`cnum'+1)/(`Nrep'+1)
+        qui count if `ovar'<=`mint' & `ovar'!=.
+        local cnum = r(N)
+        if length(`"`plusone'"')!=0  local pvalBS = (`cnum')/(`Nrep')
+        else local pvalBS = (`cnum'+1)/(`Nrep'+1)
+
+        local pbs`minv's = `pvalBS'
+        local prm`minv's = `pval'
+        local prh`minv's = min(`pvalBS'*`Holm',1)
+            
+        if length(`"`prmsm1'"')!=0 {
+            local prm`minv's = max(`prm`minv's',`prmsm1')
+        }
+            
+        local prmsm1 = `prm`minv's'
+        if length(`"`graph'"')!= 0 {
+            gen tDist`ii' = `empiricalDist'
+            local tt`ii' = `t`minv''
+            local ll`ii' "`label`minv''"
+            local yy`ii' ``minv''
+            local pp`ii' = string(`prm`minv's',"%6.4f")
+        }
+    }
+    drop `empiricalDist'
     local rank `rank' `maxv' `minv'
     local candnew
     foreach c of local cand {
@@ -263,7 +391,7 @@ if length(`"`graph'"')!= 0 {
     local graphs
     if length(`"`onesided'"')==0 {
         foreach num of numlist 1(1)`ii' {
-            local title "Variable `yy`num''"
+            local title "Combination `yy`num''"
             if length(`"`varlabels'"')!=0 local title "`ll`num''"
             
             #delimit ;
@@ -278,7 +406,7 @@ if length(`"`graph'"')!= 0 {
     }
     else {
         foreach num of numlist 1(1)`ii' {
-            local title "Variable `yy`num''" 
+            local title "Combination `yy`num''" 
             if length(`"`varlabels'"')!=0 local title "`ll`num''"
             #delimit ;
             twoway hist tDist`num', bcolor(gs12) ||
@@ -316,13 +444,21 @@ local crit = (100-c(level))/100
 local lev  = c(level)
 
 dis _newline
-dis _newline
 dis "Romano-Wolf step-down adjusted p-values"
 dis "Number of resamples: `reps'"
 dis _newline
 dis "{hline 78}"
-dis "{dup `diswidth': } | Model p-value    Resample p-value    Romano-Wolf p-value"
-dis "{hline `=`diswidth'+1'}+{hline `=76-`diswidth''}"
+
+
+if length(`"`holm'"')==0 {
+    dis "{dup `diswidth': } | Model p-value    Resample p-value    Romano-Wolf p-value"
+    dis "{hline `=`diswidth'+1'}+{hline `=76-`diswidth''}"
+}
+else {
+    dis "{dup `diswidth': } |  Model        Resample       Romano-Wolf        Holm"
+    dis "{dup `diswidth': } | p-value       p-value         p-value         p-value"
+    dis "{hline `=`diswidth'+1'}+{hline `=76-`diswidth''}"
+}
 
 local j = 0
 foreach equation of numlist 1(1)`numeqns' {
@@ -339,8 +475,24 @@ foreach equation of numlist 1(1)`numeqns' {
             matrix pvalues[`j',1]=`pv`j's'
             matrix pvalues[`j',2]=`pbs`j's'
             matrix pvalues[`j',3]=`prm`j's'
+            
         }
     }    
+    else {
+        foreach var of varlist `xvar`equation'' {
+            local ++j
+            display as text %`diswidth's abbrev("`var'",19) " {c |}  "   /*
+            */  as result %6.4f `pv`j's' "        "                    /*
+            */  as result %6.4f `pbs`j's' "          "                  /*
+            */  as result %6.4f `prm`j's' "          "                  /*
+            */  as result %6.4f `prh`j's'
+            ereturn scalar rw_`var'=`prm`j's'
+            matrix pvalues[`j',1]=`pv`j's'
+            matrix pvalues[`j',2]=`pbs`j's'
+            matrix pvalues[`j',3]=`prm`j's'
+            matrix pvalues[`j',4]=`prh`j's'
+        }
+    }
     dis "{hline 78}"
 }
 dis _newline
