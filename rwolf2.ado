@@ -1,5 +1,5 @@
 *! rwolf2: Romano Wolf stepdown hypothesis testing algorithm, alternative syntax
-*! Version 0.0.1 april 20, 2021 @ 22:47:41
+*! Version 1.0.0 july 5, 2021 @ 23:56:11
 *! Author: Damian Clarke
 *! Department of Economics
 *! University of Chile
@@ -7,12 +7,11 @@
 
 /*
 version highlights:
-0.0.1:[03/07/2021]: 
+1.0.0:[05/07/2021]: 
 */
 
 /*
 TO DO: - Documentation
-       - More beta tests
 */
 
 cap program drop rwolf2
@@ -64,6 +63,8 @@ syntax , indepvars(string)
 *-------------------------------------------------------------------------------
 if length(`"`verbose'"')==0 local q qui
 cap set seed `seed'
+cap gen RD_Estimate = .
+if _rc==0 local DROP = 1
 
 if length(`"`onesided'"')!=0 {
     if `"`onesided'"'!="positive"&`"`onesided'"'!="negative" {
@@ -86,6 +87,17 @@ tempname nullvals
 tempfile nullfile
 file open `nullvals' using "`nullfile'", write all
 
+tokenize `"`indepvars'"', parse(",")
+local NVARS = 0 
+foreach equation of numlist 1(1)`numeqns' {
+    foreach var of varlist ``equation'' {
+        local ++NVARS
+    }
+    macro shift
+}
+*dis `NVARS'
+
+
 local nsets=0
 tokenize `"`indepvars'"', parse(",")
 while length("`1'")!=0 {
@@ -98,6 +110,7 @@ if `numeqns'*2-1!=`nsets' {
     dis as error "Ensure that indepvars includes a list of variables of interest for each equation."
     error 200
 }
+
 *dis `nsets'
 *dis (`nsets'+1)/2
 *dis `numeqns'
@@ -141,7 +154,7 @@ foreach equation of numlist 1(1)`numeqns' {
     local xvar`equation'
     foreach var of varlist ``equation'' {
         local xvar`equation' `xvar`equation'' `var'
-        local allvars `allvars' "(y`equation'-`var')"
+        local allvars `allvars' "(`y`equation''-`var')"
         
         local ++j
         if length(`"`nulls'"')==0 local beta0`j' = 0
@@ -292,7 +305,7 @@ while length("`cand'")!=0 {
         }
         else local Nrep = `reps'
 
-        dis "Num of Reps is `Nrep'"
+        *dis "Num of Reps is `Nrep'"
         if length(`"`plusone'"')!=0      local pval = (`cnum')/(`Nrep')
         else if length(`"`plusone'"')==0 local pval = (`cnum'+1)/(`Nrep'+1)
         
@@ -341,7 +354,7 @@ while length("`cand'")!=0 {
         }
         else local Nrep = `reps'
 
-        dis "Num of Reps is `Nrep'"
+        *dis "Num of Reps is `Nrep'"
 
         if length(`"`plusone'"')!=0  local pval = (`cnum')/(`Nrep')
         else  local pval = (`cnum'+1)/(`Nrep'+1)
@@ -498,4 +511,5 @@ foreach equation of numlist 1(1)`numeqns' {
 dis _newline
 ereturn matrix RW=pvalues
 
+if `DROP'==1 drop RD_Estimate
 end
