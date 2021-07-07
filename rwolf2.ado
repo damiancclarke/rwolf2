@@ -55,6 +55,7 @@ syntax , indepvars(string)
   CLuster(varlist)
   idcluster(string)
   usevalid
+  noplusone
 ];
 #delimit cr
 
