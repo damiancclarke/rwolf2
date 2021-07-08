@@ -10,9 +10,6 @@ version highlights:
 1.0.0:[05/07/2021]: 
 */
 
-/*
-TO DO: - Documentation
-*/
 
 cap program drop rwolf2
 program rwolf2, eclass
@@ -64,7 +61,9 @@ syntax , indepvars(string)
 *-------------------------------------------------------------------------------
 if length(`"`verbose'"')==0 local q qui
 cap set seed `seed'
-cap gen RD_Estimate = .
+foreach rdvar in RD_Estimate Conventional Bias-corrected Robust {
+    cap gen `rdvar' = .
+}
 if _rc==0 local DROP = 1
 
 if length(`"`onesided'"')!=0 {
@@ -172,7 +171,7 @@ foreach equation of numlist 1(1)`numeqns' {
         local pv`j's= r(p)
         local label`j' `: var label `var' '
 
-        
+
         if `"`onesided'"'=="positive" {
             qui test `var'=`beta0`j''
             local sgn = sign(_b[`var'])
@@ -220,17 +219,41 @@ forvalues i=1/`reps' {
         display in smcl "." _continue
         if mod(`i',50)==0 dis "     `i'"
     }
-    
-    foreach equation of numlist 1(1)`numeqns' {
-        if length(`"`idcluster'"')!=0 qui `beqn`equation''
-        else qui `eqn`equation''
 
-        local k=1
-        foreach var of varlist `xvar`equation'' {
-            local ++j
-            if `j'==1&`k'==1 file write `nullvals' _n "`= _b[`var']';`= _se[`var']'"
-            else file write `nullvals' ";`= _b[`var']';`= _se[`var']'"
-            local ++k
+    foreach equation of numlist 1(1)`numeqns' {
+        if length(`"`usevalid'"')==0 {
+            if length(`"`idcluster'"')!=0 qui `beqn`equation''
+            else qui `eqn`equation''
+            *mat list e(b)
+            local k=1
+            foreach var of varlist `xvar`equation'' {
+                local ++j
+                if `j'==1&`k'==1 file write `nullvals' _n "`= _b[`var']';`= _se[`var']'"
+                else file write `nullvals' ";`= _b[`var']';`= _se[`var']'"
+                local ++k
+            }
+        }
+        if length(`"`usevalid'"')!=0 {
+            if length(`"`idcluster'"')!=0 cap `beqn`equation''
+            else cap `eqn`equation''
+            
+            local RET = _rc
+            *mat list e(b)
+            local k=1
+            foreach var of varlist `xvar`equation'' {
+                if `RET'!=0 {
+                    local Bbeta = .
+                    local Bstde = .
+                }
+                else {
+                    local Bbeta = _b[`var']
+                    local Bstde = _se[`var']
+                }
+                local ++j
+                if `j'==1&`k'==1 file write `nullvals' _n "`Bbeta';`Bstde'"
+                else file write `nullvals' ";`Bbeta';`Bstde'"
+                local ++k
+            }
         }
     }
     restore
@@ -254,14 +277,21 @@ local P=0
 foreach num of numlist 1(1)`j' {    
     qui gen     t`num'=(b`num'-`beta`num'')/se`num'
     qui replace b`num'=abs((b`num'-`beta`num'')/se`num')
-
     
     qui count if t`num'!=.
     if r(N)!=`reps' local ++P
 }
-if `P'!=0 {
-    dis as error "Not all bootstrap replicates have produced defined t-statistics for each variable"
-    dis as error "It is suggested that the usevalid option should be specified to discard invalid bootstrap replicates"
+if length(`"`usevalid'"')!=0 {
+    egen NMISS = rowmiss(t*)
+    qui drop if NMISS!=0
+    qui count
+    local reps = r(N)
+}
+else {
+    if `P'!=0 {
+        dis as error "Not all bootstrap replicates have produced defined t-statistics for each variable"
+        dis as error "It is suggested that the usevalid option should be specified to discard invalid bootstrap replicates"
+    }
 }
 
 *-------------------------------------------------------------------------------
@@ -299,21 +329,15 @@ while length("`cand'")!=0 {
         qui egen `empiricalDist' = rowmax(`donor_tvals')    
         qui count if `empiricalDist'>=`maxt'  & `empiricalDist' != .
         local cnum = r(N)
-        if length(`"`usevalid'"')!=0 {
-            qui count if `ovar'!=.
-            local Nrep = r(N)
-        }
-        else local Nrep = `reps'
 
-        *dis "Num of Reps is `Nrep'"
-        if length(`"`plusone'"')!=0      local pval = (`cnum')/(`Nrep')
-        else if length(`"`plusone'"')==0 local pval = (`cnum'+1)/(`Nrep'+1)
+        if length(`"`plusone'"')!=0      local pval = (`cnum')/(`reps')
+        else if length(`"`plusone'"')==0 local pval = (`cnum'+1)/(`reps'+1)
         
         qui count if `ovar'>=`maxt' & `ovar'!=.
         local cnum = r(N)
 
-        if length(`"`plusone'"')!=0      local pvalBS = `cnum'/`Nrep'
-        else if length(`"`plusone'"')==0 local pvalBS = (`cnum'+1)/(`Nrep'+1)
+        if length(`"`plusone'"')!=0      local pvalBS = `cnum'/`reps'
+        else if length(`"`plusone'"')==0 local pvalBS = (`cnum'+1)/(`reps'+1)
     
         local pbs`maxv's= `pvalBS'
         local prm`maxv's= `pval'
@@ -348,20 +372,12 @@ while length("`cand'")!=0 {
         qui count if `empiricalDist' <= `mint' & `empiricalDist' != .
         local cnum = r(N)
 
-        if length(`"`usevalid'"')!=0 {
-            qui count if `ovar'!=.
-            local Nrep = r(N)
-        }
-        else local Nrep = `reps'
-
-        *dis "Num of Reps is `Nrep'"
-
-        if length(`"`plusone'"')!=0  local pval = (`cnum')/(`Nrep')
-        else  local pval = (`cnum'+1)/(`Nrep'+1)
+        if length(`"`plusone'"')!=0  local pval = (`cnum')/(`reps')
+        else  local pval = (`cnum'+1)/(`reps'+1)
         qui count if `ovar'<=`mint' & `ovar'!=.
         local cnum = r(N)
-        if length(`"`plusone'"')!=0  local pvalBS = (`cnum')/(`Nrep')
-        else local pvalBS = (`cnum'+1)/(`Nrep'+1)
+        if length(`"`plusone'"')!=0  local pvalBS = (`cnum')/(`reps')
+        else local pvalBS = (`cnum'+1)/(`reps'+1)
 
         local pbs`minv's = `pvalBS'
         local prm`minv's = `pval'
@@ -455,10 +471,14 @@ foreach equation of numlist 1(1)`numeqns' {
 }
 local crit = (100-c(level))/100
 local lev  = c(level)
+if length(`"`usevalid'"')!=0 {
+    local NREP "Number of valid resamples: `reps'"
+}
+else local NREP "Number of resamples: `reps'"
 
 dis _newline
 dis "Romano-Wolf step-down adjusted p-values"
-dis "Number of resamples: `reps'"
+dis "`NREP'"
 dis _newline
 dis "{hline 78}"
 
@@ -511,5 +531,9 @@ foreach equation of numlist 1(1)`numeqns' {
 dis _newline
 ereturn matrix RW=pvalues
 
-if `DROP'==1 drop RD_Estimate
+if `DROP'==1 {
+    foreach rdvar in RD_Estimate Conventional Bias-corrected Robust {
+        cap gen `rdvar' = .
+    }
+}
 end
