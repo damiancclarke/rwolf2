@@ -61,10 +61,16 @@ syntax , indepvars(string)
 *-------------------------------------------------------------------------------
 if length(`"`verbose'"')==0 local q qui
 cap set seed `seed'
+
+local jj=1
 foreach rdvar in RD_Estimate Conventional Bias-corrected Robust {
     cap gen `rdvar' = .
+    if _rc==0 local DROP`jj' = 1
+    else      local DROP`jj' = 0    
+    local ++jj
 }
-if _rc==0 local DROP = 1
+
+
 
 if length(`"`onesided'"')!=0 {
     if `"`onesided'"'!="positive"&`"`onesided'"'!="negative" {
@@ -110,10 +116,6 @@ if `numeqns'*2-1!=`nsets' {
     error 200
 }
 
-*dis `nsets'
-*dis (`nsets'+1)/2
-*dis `numeqns'
-
 local bopts
 if length(`"`strata'"')!=0  local bopts `bopts' strata(`strata')
 if length(`"`cluster'"')!=0 local bopts `bopts' cluster(`cluster')
@@ -128,7 +130,6 @@ if length(`"`idcluster'"')!=0 {
         local RE2 = "vce\( *[cluster].*\)"
         local beqn`equation' = regexr("`eqn`equation''" ,"`RE1'","cluster(`idcluster')")
         local beqn`equation' = regexr("`beqn`equation''","`RE2'","vce(cluster `idcluster')")
-        *dis "`beqn`equation''"
     }
 }
 
@@ -224,7 +225,6 @@ forvalues i=1/`reps' {
         if length(`"`usevalid'"')==0 {
             if length(`"`idcluster'"')!=0 qui `beqn`equation''
             else qui `eqn`equation''
-            *mat list e(b)
             local k=1
             foreach var of varlist `xvar`equation'' {
                 local ++j
@@ -238,7 +238,6 @@ forvalues i=1/`reps' {
             else cap `eqn`equation''
             
             local RET = _rc
-            *mat list e(b)
             local k=1
             foreach var of varlist `xvar`equation'' {
                 if `RET'!=0 {
@@ -272,8 +271,6 @@ if length(`"`holm'"')!=0 matrix pvalues = J(`j',4,.)
 *--- (5) Create null t-distribution
 *-------------------------------------------------------------------------------
 local P=0
-**TEST
-*replace b1=. in 88
 foreach num of numlist 1(1)`j' {    
     qui gen     t`num'=(b`num'-`beta`num'')/se`num'
     qui replace b`num'=abs((b`num'-`beta`num'')/se`num')
@@ -350,7 +347,6 @@ while length("`cand'")!=0 {
         local prmsm1 = `prm`maxv's'
         if length(`"`graph'"')!=0 {
             gen tDist`ii' = `empiricalDist'
-            *dis "``maxv''"
             local tt`ii' = `t`maxv''
             local ll`ii' "`label`maxv''"
             local yy`ii' ``maxv''
@@ -507,8 +503,7 @@ foreach equation of numlist 1(1)`numeqns' {
             ereturn scalar rw_`var'=`prm`j's'
             matrix pvalues[`j',1]=`pv`j's'
             matrix pvalues[`j',2]=`pbs`j's'
-            matrix pvalues[`j',3]=`prm`j's'
-            
+            matrix pvalues[`j',3]=`prm`j's'            
         }
     }    
     else {
@@ -529,11 +524,18 @@ foreach equation of numlist 1(1)`numeqns' {
     dis "{hline 78}"
 }
 dis _newline
-ereturn matrix RW=pvalues
 
-if `DROP'==1 {
-    foreach rdvar in RD_Estimate Conventional Bias-corrected Robust {
-        cap gen `rdvar' = .
+*-------------------------------------------------------------------------------
+*--- (9) Clean up and Return
+*-------------------------------------------------------------------------------
+local jj=1
+foreach rdvar in RD_Estimate Conventional Bias-corrected Robust {
+    if `DROP`jj''==1 {
+        drop `rdvar'
     }
+    local ++jj
 }
+
+
+ereturn matrix RW=pvalues
 end
