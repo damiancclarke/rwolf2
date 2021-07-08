@@ -96,7 +96,6 @@ foreach equation of numlist 1(1)`numeqns' {
     }
     macro shift
 }
-*dis `NVARS'
 
 
 local nsets=0
