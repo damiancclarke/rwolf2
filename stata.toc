@@ -1,0 +1,8 @@
+v 1.0.0
+d Damian Clarke
+d dclarke@fen.uchile.cl
+d https://github.com/damiancclarke/rwolf2
+
+d 'rwolf2': A more flexible syntax to calculate Romano-Wolf stepdown p-values for multiple hypothesis testing 
+
+p rwolf2

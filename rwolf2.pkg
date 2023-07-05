@@ -1,0 +1,8 @@
+v 1.0.0
+d 'RWOLF2': A more flexible syntax to calculate Romano-Wolf stepdown p-values for multiple hypothesis testing
+d
+d Distribution-Date:   2021-07-05
+d License: GNU v3.0
+d
+F rwolf2.ado
+F rwolf2.sthlp
