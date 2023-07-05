@@ -7,13 +7,13 @@
 
 /*
 version highlights:
-1.0.0:[05/07/2021]: 
+1.0.0: [05/07/2021]: 
 */
 
 
 cap program drop rwolf2
 program rwolf2, eclass
-vers 11.0
+vers 13.0
 
 *-------------------------------------------------------------------------------
 *--- (0) Parsing of equations 
@@ -55,6 +55,8 @@ syntax , indepvars(string)
   noplusone
 ];
 #delimit cr
+
+
 
 *-------------------------------------------------------------------------------
 *--- (2) Unpacking baseline options and error check
@@ -143,11 +145,12 @@ local j    = 0
 local diswidth = 15
 
 local allvars
+
 foreach equation of numlist 1(1)`numeqns' {
     `q' dis "Equation `equation' is `eqn`equation''"
     `q' dis "Variables to correct are ``equation''"
     `q' `eqn`equation''
-
+    
     local y`equation' `e(depvar)'    
     local y`equation'length = length("`y`equation''")
     local diswidth = max(`diswidth',`y`equation'length')
@@ -500,7 +503,7 @@ foreach equation of numlist 1(1)`numeqns' {
             */  as result %6.4f `pv`j's' "             "                    /*
             */  as result %6.4f `pbs`j's' "              "                  /*
             */  as result %6.4f `prm`j's'
-            ereturn scalar rw_`var'=`prm`j's'
+            ereturn scalar rw_`y`equation''_`var'=`prm`j's'
             matrix pvalues[`j',1]=`pv`j's'
             matrix pvalues[`j',2]=`pbs`j's'
             matrix pvalues[`j',3]=`prm`j's'            
@@ -514,7 +517,7 @@ foreach equation of numlist 1(1)`numeqns' {
             */  as result %6.4f `pbs`j's' "          "                  /*
             */  as result %6.4f `prm`j's' "          "                  /*
             */  as result %6.4f `prh`j's'
-            ereturn scalar rw_`var'=`prm`j's'
+            ereturn scalar rw_`y`equation''_`var'=`prm`j's'
             matrix pvalues[`j',1]=`pv`j's'
             matrix pvalues[`j',2]=`pbs`j's'
             matrix pvalues[`j',3]=`prm`j's'
