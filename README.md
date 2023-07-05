@@ -1,4 +1,4 @@
-![Stata](https://img.shields.io/badge/stata-2013-green) ![GitHub Starts](https://img.shields.io/github/stars/damiancclarke/rwolf2?style=social) ![GitHub license](https://img.shields.io/github/license/license/rwolf2)
+![Stata](https://img.shields.io/badge/stata-2013-green) ![GitHub Starts](https://img.shields.io/github/stars/damiancclarke/rwolf2?style=social) ![GitHub license](https://img.shields.io/github/license/damiancclarke/rwolf2)
 
 # rwolf2 -- A more flexible syntax to calculate Romano-Wolf stepdown p-values for multiple hypothesis testing 
 
