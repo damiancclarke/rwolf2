@@ -2,7 +2,7 @@
 
 # rwolf2 -- A more flexible syntax to calculate Romano-Wolf stepdown p-values for multiple hypothesis testing 
 
-`rwolf2` calculates [Romano and Wolf](#references)'s ([2005a](#references),[b](#references)) step-down adjusted p-values robust to multiple hypothesis testing.  It provides a more general syntax than that provided in the rwolf command, although the underlying algorithm is the same.  This program follows the resampling algorithm described in Romano and Wolf (2016), and provides a p-value corresponding to the significance of a hypothesis test where S tests have been implemented, providing strong control of the familywise error rate (the
+`rwolf2` calculates [Romano and Wolf](#references)'s ([2005a](#references),[b](#references)) step-down adjusted p-values robust to multiple hypothesis testing.  It provides a more general syntax than that provided in the rwolf command, although the underlying algorithm is the same.  This program follows the resampling algorithm described in Romano and Wolf (2016), and provides a p-value corresponding to the significance of a hypothesis test where *S* tests have been implemented, providing strong control of the familywise error rate (the
 probability of committing any Type I error among all of the *S* hypotheses tested).  The `rwolf2` algorithm constructs a null
 distribution for each of the *S* hypothesis tests based on Studentized bootstrap replications of a subset of the tested
 variables.  Full details of the procedure are described in [Romano and Wolf (2016)](#references), additional discussion related to the
