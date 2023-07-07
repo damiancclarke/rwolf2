@@ -1,8 +1,13 @@
 ![Stata](https://img.shields.io/badge/stata-2013-green) ![GitHub Starts](https://img.shields.io/github/stars/damiancclarke/rwolf2?style=social) ![GitHub license](https://img.shields.io/github/license/damiancclarke/rwolf2)
 
-# rwolf2 -- A more flexible syntax to calculate Romano-Wolf stepdown p-values for multiple hypothesis testing 
+# rwolf2 - A more flexible syntax to calculate Romano-Wolf stepdown p-values for multiple hypothesis testing 
 
-`rwolf2` calculates [Romano and Wolf](#references)'s ([2005a](#references),[b](#references)) step-down adjusted p-values robust to multiple hypothesis testing.  It provides a more general syntax than that provided in the rwolf command, although the underlying algorithm is the same.  This program follows the resampling algorithm described in Romano and Wolf (2016), and provides a p-value corresponding to the significance of a hypothesis test where *S* tests have been implemented, providing strong control of the familywise error rate (the
+`rwolf2` calculates [Romano and Wolf](#references)'s ([2005a](#references),[b](#references))
+step-down adjusted p-values robust to multiple hypothesis testing.  It provides a more general syntax than that
+provided in the [rwolf](https://github.com/damiancclarke/rwolf) command, although the underlying algorithm is the same.
+This program follows the resampling algorithm described in Romano and Wolf (2016), and provides a p-value corresponding
+to the significance of a hypothesis test where *S* tests have been implemented, providing strong control of the
+familywise error rate (the
 probability of committing any Type I error among all of the *S* hypotheses tested).  The `rwolf2` algorithm constructs a null
 distribution for each of the *S* hypothesis tests based on Studentized bootstrap replications of a subset of the tested
 variables.  Full details of the procedure are described in [Romano and Wolf (2016)](#references), additional discussion related to the
@@ -104,8 +109,18 @@ price           |
 ------------------------------------------------------------------------------
 ```
 
-### References
+## Other Links
++ The `rwolf2` command has been written to provide additional functionality and a more flexible syntax than the original `rwolf` command [(Clarke, 2016)](#references). A discussion of the difference between rwolf2 and rwolf as well as documentation of their identical outcomes in cases where identical corrections are implemented is avaialable [here](https://www.damianclarke.net/computation/rwolf2.pdf). 
++ David McKenzie has provided a discussion of multiple hypothesis testing routines in Stata, with some details related to this and other commands.  This is available [here](https://blogs.worldbank.org/impactevaluations/updated-overview-multiple-hypothesis-testing-commands-stata).
++ The Romano-Wolf multiple hypothesis correction is a bootstrap-based resampling correction, and for comparability with regression-based p-values, original bootstrap procedures should be very close to regression-based p-values.  Some discussion related to this point can be found in Appendix B1 of the following paper by [Leighton (2023)](https://www.sciencedirect.com/science/article/pii/S0305750X23001535) (open source link). 
+
+
+## References
+D. Clarke. RWOLF: Stata module to calculate Romano-Wolf stepdown pvalues for multiple hypothesis testing. Statistical Software Components, Boston College Department of Economics, Dec. 2016. URL https://ideas.repec.org/c/boc/bocode/s458276.html.
+
 D. Clarke, J. P. Romano, and M. Wolf. **[The Romano–Wolf Multiple­-hypothesis Correction in Stata](https://journals.sagepub.com/doi/abs/10.1177/1536867X20976314)**. *The Stata Journal*, 20(4):812–843, 2020.
+
+M. Leighton, A Martine and J Massaga. **[Fostering early childhood development in low-resource communities: Evidence from a group-based parenting intervention in Tanzania](https://www.sciencedirect.com/science/article/pii/S0305750X23001535)**. *World Development*, 170: 106335, 2023. 
 
 J. P. Romano and M. Wolf. **[Stepwise Multiple Testing as Formalized Data Snooping](https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1468-0262.2005.00615.x)**. Econometrica, 73(4): 1237–1282, 2005a.
 
