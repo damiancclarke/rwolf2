@@ -3,9 +3,9 @@
 # rwolf2 - A more flexible syntax to calculate Romano-Wolf stepdown p-values for multiple hypothesis testing 
 
 `rwolf2` calculates [Romano and Wolf](#references)'s ([2005a](#references),[b](#references))
-step-down adjusted p-values robust to multiple hypothesis testing.  It provides a more general syntax than that
+step-down adjusted *p*-values robust to multiple hypothesis testing.  It provides a more general syntax than that
 provided in the [rwolf](https://github.com/damiancclarke/rwolf) command, although the underlying algorithm is the same.
-This program follows the resampling algorithm described in Romano and Wolf (2016), and provides a p-value corresponding
+This program follows the resampling algorithm described in Romano and Wolf (2016), and provides a *p*-value corresponding
 to the significance of a hypothesis test where *S* tests have been implemented, providing strong control of the
 familywise error rate (the
 probability of committing any Type I error among all of the *S* hypotheses tested).  The `rwolf2` algorithm constructs a null
@@ -22,7 +22,7 @@ commands including user-written ados such as `reghdfe`, `ivreg2` (and related pr
 
 In each model, optionally, regression weights, if or in can be specified.  By default, 100 bootstrap replications are run for
 each of the *S* multiple hypotheses.  Where possible, a much larger number of replications should be preferred given that
-p-values are computed by comparing estimates to a bootstrapped null distribution constructed from these replications.  The
+*p*-values are computed by comparing estimates to a bootstrapped null distribution constructed from these replications.  The
 number of replications is set using the `reps(#)` option, and to replicate results, the `seed(#)` should be set.
 
 By default, the re-sampled null distributions are formed using a simple bootstrap procedure.  However, more complex stratified
@@ -31,10 +31,10 @@ only to the resampling procedure, and not to the standard errors estimated in ea
 variance estimator is not desired for regression models, this should be indicated in the syntax of each method indicated in the
 command syntax.
 
-The command returns the Romano Wolf p-value corresponding to each variable, standard (bootstrapped) uncorrected p-values, and
-for reference, the original uncorrected (analytical) p-value from the initial tests when rwolf2 estimates baseline regression
+The command returns the Romano Wolf *p*-value corresponding to each variable, standard (bootstrapped) uncorrected *p*-values, and
+for reference, the original uncorrected (analytical) *p*-value from the initial tests when rwolf2 estimates baseline regression
 models.  rwolf2 is an e-class command, and a matrix is returned as e(RW) providing the full set of Romano-Wolf corrected
-p-values (and other p-values mentioned above).
+*p*-values (and other *p*-values mentioned above).
 
 To install directly into Stata:
 ```s
@@ -112,7 +112,7 @@ price           |
 ## Other Links
 + The `rwolf2` command has been written to provide additional functionality and a more flexible syntax than the original `rwolf` command [(Clarke, 2016)](#references). A discussion of the difference between rwolf2 and rwolf as well as documentation of their identical outcomes in cases where identical corrections are implemented is avaialable [here](https://www.damianclarke.net/computation/rwolf2.pdf). 
 + David McKenzie has provided a discussion of multiple hypothesis testing routines in Stata, with some details related to this and other commands.  This is available [here](https://blogs.worldbank.org/impactevaluations/updated-overview-multiple-hypothesis-testing-commands-stata).
-+ The Romano-Wolf multiple hypothesis correction is a bootstrap-based resampling correction, and for comparability with regression-based p-values, original bootstrap procedures should be very close to regression-based p-values.  Some discussion related to this point can be found in Appendix B1 of the following paper by [Leighton (2023)](https://www.sciencedirect.com/science/article/pii/S0305750X23001535) (open source link). 
++ The Romano-Wolf multiple hypothesis correction is a bootstrap-based resampling correction, and for comparability with regression-based *p*-values, original bootstrap procedures should be very close to regression-based *p*-values.  Some discussion related to this point can be found in Appendix B1 of the following paper by [Leighton (2023)](#references) (open source link). 
 
 
 ## References
